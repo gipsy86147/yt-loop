@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <title>YouTube Loop</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f4efe7;
+        --surface: rgba(255, 252, 247, 0.85);
+        --surface-strong: #fffaf2;
+        --text: #1f1b16;
+        --muted: #6e6254;
+        --accent: #c84b31;
+        --accent-dark: #8f301f;
+        --border: rgba(31, 27, 22, 0.12);
+        --shadow: 0 24px 80px rgba(57, 39, 20, 0.14);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: Georgia, "Times New Roman", serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(200, 75, 49, 0.16), transparent 34%),
+          radial-gradient(circle at top right, rgba(138, 171, 126, 0.16), transparent 28%),
+          linear-gradient(180deg, #f7f3ed 0%, var(--bg) 100%);
+      }
+
+      .page {
+        width: min(1080px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 32px 0 48px;
+      }
+
+      .hero {
+        margin-bottom: 24px;
+      }
+
+      .eyebrow {
+        margin: 0 0 8px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--accent-dark);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(2.4rem, 6vw, 4.8rem);
+        line-height: 0.92;
+        letter-spacing: -0.05em;
+      }
+
+      .subtitle {
+        max-width: 680px;
+        margin: 16px 0 0;
+        font-size: 1.05rem;
+        line-height: 1.6;
+        color: var(--muted);
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 320px minmax(0, 1fr);
+        gap: 20px;
+        align-items: start;
+      }
+
+      .panel,
+      .player-shell {
+        backdrop-filter: blur(14px);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 28px;
+        box-shadow: var(--shadow);
+      }
+
+      .panel {
+        padding: 22px;
+      }
+
+      .player-shell {
+        padding: 18px;
+      }
+
+      .field {
+        margin-bottom: 16px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 0.9rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+      }
+
+      input {
+        width: 100%;
+        border: 1px solid rgba(31, 27, 22, 0.18);
+        border-radius: 16px;
+        padding: 12px 14px;
+        font: inherit;
+        font-size: 1rem;
+        color: var(--text);
+        background: var(--surface-strong);
+      }
+
+      input:focus {
+        outline: 2px solid rgba(200, 75, 49, 0.25);
+        border-color: var(--accent);
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .segment-list {
+        display: grid;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .segment-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr auto;
+        gap: 10px;
+        align-items: end;
+      }
+
+      .segment-row .field {
+        margin-bottom: 0;
+      }
+
+      .secondary-button {
+        border: 1px solid rgba(31, 27, 22, 0.16);
+        box-shadow: none;
+        color: var(--text);
+        background: var(--surface-strong);
+      }
+
+      .remove-button {
+        width: auto;
+        min-width: 48px;
+        padding: 12px 14px;
+      }
+
+      button {
+        width: 100%;
+        border: 0;
+        border-radius: 999px;
+        padding: 14px 18px;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+        color: #fff8f1;
+        background: linear-gradient(135deg, var(--accent) 0%, #e27a33 100%);
+        transition: transform 180ms ease, box-shadow 180ms ease;
+        box-shadow: 0 14px 36px rgba(200, 75, 49, 0.3);
+      }
+
+      button:hover {
+        transform: translateY(-1px);
+      }
+
+      .hint,
+      .status,
+      .meta {
+        margin: 14px 0 0;
+        font-size: 0.92rem;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+
+      .status {
+        min-height: 1.5em;
+      }
+
+      .status[data-tone="error"] {
+        color: #9f2d20;
+      }
+
+      .status[data-tone="ok"] {
+        color: #2f6548;
+      }
+
+      .player-frame {
+        position: relative;
+        aspect-ratio: 16 / 9;
+        border-radius: 20px;
+        overflow: hidden;
+        background:
+          linear-gradient(135deg, rgba(200, 75, 49, 0.28), rgba(31, 27, 22, 0.72)),
+          #231911;
+      }
+
+      #player {
+        width: 100%;
+        height: 100%;
+      }
+
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px 20px;
+      }
+
+      .pill {
+        display: inline-flex;
+        gap: 6px;
+      }
+
+      .pill strong {
+        color: var(--text);
+      }
+
+      @media (max-width: 860px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+
+        .page {
+          width: min(100% - 20px, 1080px);
+          padding-top: 20px;
+        }
+
+        .segment-row {
+          grid-template-columns: 1fr;
+        }
+
+        .remove-button {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <p class="eyebrow">Static player</p>
+        <h1>Loop any YouTube segment.</h1>
+        <p class="subtitle">
+          Enter a YouTube video ID and one or more time ranges. Open this file in
+          any browser, press play, and the selected segments will repeat in order.
+        </p>
+      </section>
+
+      <section class="layout">
+        <form class="panel" id="loop-form">
+          <div class="field">
+            <label for="video-id">Video ID or URL</label>
+            <input
+              id="video-id"
+              name="videoId"
+              type="text"
+              placeholder="dQw4w9WgXcQ or a full YouTube URL"
+              autocomplete="off"
+              required
+            />
+          </div>
+
+          <div class="field">
+            <label>Segments</label>
+            <div class="segment-list" id="segment-list"></div>
+            <button class="secondary-button" id="add-segment" type="button">
+              Add segment
+            </button>
+          </div>
+
+          <button type="submit">Load loop</button>
+          <p class="status" id="status" aria-live="polite"></p>
+          <p class="hint">
+            Times can be entered as seconds or <code>hh:mm:ss</code>. The browser
+            still needs internet access for YouTube itself.
+          </p>
+          <p class="hint" id="local-warning" hidden>
+            Direct <code>file://</code> playback may fail with YouTube error
+            <code>153</code>. If that happens, run the included
+            <code>open-local.command</code> launcher instead.
+          </p>
+        </form>
+
+        <div class="player-shell">
+          <div class="player-frame">
+            <div id="player"></div>
+          </div>
+          <div class="meta">
+            <span class="pill"><strong>Segments:</strong> <span id="loop-window">-</span></span>
+            <span class="pill"><strong>Video:</strong> <span id="active-video">-</span></span>
+            <span class="pill"><strong>Now:</strong> <span id="active-segment">-</span></span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <template id="segment-template">
+      <div class="segment-row">
+        <div class="field">
+          <label>Start</label>
+          <input
+            data-segment-start
+            type="text"
+            placeholder="0 or 1:23"
+            required
+          />
+        </div>
+        <div class="field">
+          <label>End</label>
+          <input
+            data-segment-end
+            type="text"
+            placeholder="0:30 or 90"
+            required
+          />
+        </div>
+        <button class="secondary-button remove-button" data-remove-segment type="button">
+          Remove
+        </button>
+      </div>
+    </template>
+
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script>
+      const form = document.getElementById("loop-form");
+      const statusEl = document.getElementById("status");
+      const loopWindowEl = document.getElementById("loop-window");
+      const activeVideoEl = document.getElementById("active-video");
+      const activeSegmentEl = document.getElementById("active-segment");
+      const videoIdInput = document.getElementById("video-id");
+      const localWarningEl = document.getElementById("local-warning");
+      const segmentListEl = document.getElementById("segment-list");
+      const addSegmentButton = document.getElementById("add-segment");
+      const segmentTemplate = document.getElementById("segment-template");
+
+      let player;
+      let apiReadyResolve;
+      let apiReady = new Promise((resolve) => {
+        apiReadyResolve = resolve;
+      });
+      let currentVideoId = "";
+      let loopSegments = [];
+      let currentSegmentIndex = 0;
+      let lastSeekAt = 0;
+
+      function setStatus(message, tone) {
+        statusEl.textContent = message;
+        statusEl.dataset.tone = tone || "";
+      }
+
+      function formatTime(totalSeconds) {
+        const seconds = Math.max(0, Math.floor(totalSeconds));
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const remainingSeconds = seconds % 60;
+
+        if (hours > 0) {
+          return [hours, minutes, remainingSeconds]
+            .map((part, index) => String(part).padStart(index === 0 ? 1 : 2, "0"))
+            .join(":");
+        }
+
+        return [minutes, remainingSeconds]
+          .map((part, index) => String(part).padStart(index === 0 ? 1 : 2, "0"))
+          .join(":");
+      }
+
+      function parseTime(rawValue) {
+        const value = rawValue.trim();
+
+        if (!value) {
+          throw new Error("Time value is required.");
+        }
+
+        if (/^\d+(\.\d+)?$/.test(value)) {
+          return Number(value);
+        }
+
+        const parts = value.split(":");
+        if (parts.some((part) => !/^\d+$/.test(part))) {
+          throw new Error("Use seconds or hh:mm:ss.");
+        }
+
+        return parts.reduce((total, part) => total * 60 + Number(part), 0);
+      }
+
+      function extractVideoId(rawValue) {
+        const value = rawValue.trim();
+
+        if (!value) {
+          throw new Error("Enter a YouTube video ID or URL.");
+        }
+
+        if (/^[A-Za-z0-9_-]{11}$/.test(value)) {
+          return value;
+        }
+
+        let url;
+        try {
+          url = new URL(value);
+        } catch {
+          throw new Error("Use a valid YouTube ID or URL.");
+        }
+
+        const hostname = url.hostname.replace(/^www\./, "");
+        if (hostname === "youtu.be") {
+          const shortId = url.pathname.split("/").filter(Boolean)[0];
+          if (shortId && /^[A-Za-z0-9_-]{11}$/.test(shortId)) {
+            return shortId;
+          }
+        }
+
+        if (
+          hostname === "youtube.com" ||
+          hostname === "m.youtube.com" ||
+          hostname === "music.youtube.com"
+        ) {
+          const vParam = url.searchParams.get("v");
+          if (vParam && /^[A-Za-z0-9_-]{11}$/.test(vParam)) {
+            return vParam;
+          }
+
+          const pathParts = url.pathname.split("/").filter(Boolean);
+          const embeddedId = pathParts[1];
+          if (
+            (pathParts[0] === "embed" || pathParts[0] === "shorts" || pathParts[0] === "live") &&
+            embeddedId &&
+            /^[A-Za-z0-9_-]{11}$/.test(embeddedId)
+          ) {
+            return embeddedId;
+          }
+        }
+
+        throw new Error("Could not find a valid YouTube video ID in that input.");
+      }
+
+      function describePlayerError(code) {
+        const messages = {
+          2: "Error 2: the video ID or URL format is invalid.",
+          5: "Error 5: the browser could not play this video in the HTML5 player.",
+          100: "Error 100: the video was not found or is private.",
+          101: "Error 101: the video owner does not allow embedding.",
+          150: "Error 150: the video owner does not allow embedding.",
+          153:
+            "Error 153: YouTube did not receive a Referer header. This often happens when opening the page directly as file://. Use open-local.command instead.",
+        };
+
+        return messages[code] || ("YouTube returned error " + code + ".");
+      }
+
+      function formatSegment(segment, index) {
+        return (
+          "#" +
+          (index + 1) +
+          " " +
+          formatTime(segment.start) +
+          " to " +
+          formatTime(segment.end)
+        );
+      }
+
+      function addSegmentRow(values) {
+        const fragment = segmentTemplate.content.cloneNode(true);
+        const row = fragment.querySelector(".segment-row");
+        const startEl = row.querySelector("[data-segment-start]");
+        const endEl = row.querySelector("[data-segment-end]");
+        const removeButton = row.querySelector("[data-remove-segment]");
+
+        startEl.value = values && values.start ? values.start : "0";
+        endEl.value = values && values.end ? values.end : "";
+
+        removeButton.addEventListener("click", () => {
+          if (segmentListEl.children.length === 1) {
+            startEl.focus();
+            setStatus("At least one segment is required.", "error");
+            return;
+          }
+
+          row.remove();
+        });
+
+        segmentListEl.appendChild(row);
+      }
+
+      function readSegmentsFromForm() {
+        const rows = Array.from(segmentListEl.querySelectorAll(".segment-row"));
+        if (rows.length === 0) {
+          throw new Error("Add at least one segment.");
+        }
+
+        return rows.map((row, index) => {
+          const startValue = row.querySelector("[data-segment-start]").value;
+          const endValue = row.querySelector("[data-segment-end]").value;
+          const start = parseTime(startValue);
+          const end = parseTime(endValue);
+
+          if (end <= start) {
+            throw new Error("Segment " + (index + 1) + " must end after it starts.");
+          }
+
+          return { start, end };
+        });
+      }
+
+      function syncUrl(videoId, segments) {
+        const params = new URLSearchParams({
+          v: videoId,
+          segments: segments.map((segment) => segment.start + "-" + segment.end).join(","),
+        });
+        history.replaceState(null, "", "?" + params.toString());
+      }
+
+      function parseSegmentsParam(rawValue) {
+        if (!rawValue) {
+          return null;
+        }
+
+        const segments = rawValue
+          .split(",")
+          .map((entry) => entry.trim())
+          .filter(Boolean)
+          .map((entry) => {
+            const parts = entry.split("-");
+            if (parts.length !== 2) {
+              throw new Error("Use segments like 0-10,25-40 in the URL.");
+            }
+
+            return {
+              start: String(parseTime(parts[0])),
+              end: String(parseTime(parts[1])),
+            };
+          });
+
+        return segments.length > 0 ? segments : null;
+      }
+
+      function readInitialValues() {
+        const params = new URLSearchParams(window.location.search);
+        const videoId = params.get("v");
+        const segments = parseSegmentsParam(params.get("segments"));
+        const start = params.get("start");
+        const end = params.get("end");
+
+        if (videoId) {
+          videoIdInput.value = videoId;
+        }
+
+        if (segments) {
+          segments.forEach((segment) => addSegmentRow(segment));
+          return;
+        }
+
+        addSegmentRow({
+          start: start || "0",
+          end: end || "",
+        });
+      }
+
+      function updateMeta(videoId, segments, activeIndex) {
+        activeVideoEl.textContent = videoId || "-";
+        loopWindowEl.textContent =
+          segments && segments.length > 0
+            ? segments.map((segment, index) => formatSegment(segment, index)).join(" • ")
+            : "-";
+
+        if (
+          segments &&
+          segments.length > 0 &&
+          typeof activeIndex === "number" &&
+          segments[activeIndex]
+        ) {
+          activeSegmentEl.textContent = formatSegment(segments[activeIndex], activeIndex);
+        } else {
+          activeSegmentEl.textContent = "-";
+        }
+      }
+
+      function getCurrentSegment() {
+        return loopSegments[currentSegmentIndex];
+      }
+
+      function jumpToSegment(index, shouldPlay) {
+        if (!player || !loopSegments[index]) {
+          return;
+        }
+
+        currentSegmentIndex = index;
+        const segment = getCurrentSegment();
+        updateMeta(currentVideoId, loopSegments, currentSegmentIndex);
+        lastSeekAt = Date.now();
+        player.seekTo(segment.start, true);
+
+        if (typeof player.playVideo === "function" && shouldPlay) {
+          player.playVideo();
+        }
+      }
+
+      function advanceSegment() {
+        if (loopSegments.length === 0) {
+          return;
+        }
+
+        const nextIndex = (currentSegmentIndex + 1) % loopSegments.length;
+        jumpToSegment(nextIndex, true);
+      }
+
+      function createPlayer(videoId, segments) {
+        const firstSegment = segments[0];
+        return new YT.Player("player", {
+          videoId,
+          playerVars: {
+            autoplay: 1,
+            controls: 1,
+            origin: window.location.protocol === "file:" ? undefined : window.location.origin,
+            playsinline: 1,
+            rel: 0,
+            start: firstSegment.start,
+          },
+          events: {
+            onReady: (event) => {
+              jumpToSegment(0, false);
+              event.target.playVideo();
+              setStatus("Loop loaded. Segments will repeat in order.", "ok");
+            },
+            onStateChange: (event) => {
+              if (event.data === YT.PlayerState.ENDED) {
+                advanceSegment();
+              }
+            },
+            onError: (event) => {
+              console.error("YouTube player error", event.data);
+              setStatus(describePlayerError(event.data), "error");
+            },
+            onAutoplayBlocked: () => {
+              setStatus("The browser blocked autoplay. Press play in the player.", "ok");
+            },
+          },
+        });
+      }
+
+      async function loadLoop(videoId, segments) {
+        await apiReady;
+
+        loopSegments = segments;
+        currentSegmentIndex = 0;
+        currentVideoId = videoId;
+        updateMeta(videoId, segments, currentSegmentIndex);
+        syncUrl(videoId, segments);
+
+        if (!player) {
+          player = createPlayer(videoId, segments);
+          return;
+        }
+
+        player.loadVideoById({
+          videoId,
+          startSeconds: segments[0].start,
+        });
+        setStatus("Updating loop…", "");
+      }
+
+      window.onYouTubeIframeAPIReady = function () {
+        apiReadyResolve();
+      };
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        let videoId;
+        try {
+          videoId = extractVideoId(videoIdInput.value);
+        } catch (error) {
+          setStatus(error.message, "error");
+          return;
+        }
+
+        let segments;
+
+        try {
+          segments = readSegmentsFromForm();
+        } catch (error) {
+          setStatus(error.message, "error");
+          return;
+        }
+
+        setStatus("Loading video…", "");
+        await loadLoop(videoId, segments);
+      });
+
+      window.setInterval(() => {
+        if (!player || typeof player.getCurrentTime !== "function") {
+          return;
+        }
+
+        const state = player.getPlayerState();
+        if (state !== YT.PlayerState.PLAYING && state !== YT.PlayerState.BUFFERING) {
+          return;
+        }
+
+        const now = Date.now();
+        if (now - lastSeekAt < 400) {
+          return;
+        }
+
+        const currentSegment = getCurrentSegment();
+        if (!currentSegment) {
+          return;
+        }
+
+        const currentTime = player.getCurrentTime();
+        if (currentTime >= currentSegment.end - 0.15) {
+          advanceSegment();
+        }
+      }, 150);
+
+      addSegmentButton.addEventListener("click", () => {
+        addSegmentRow({
+          start: "0",
+          end: "",
+        });
+      });
+
+      readInitialValues();
+      updateMeta("", null, null);
+      if (window.location.protocol === "file:") {
+        localWarningEl.hidden = false;
+      }
+
+      if (
+        videoIdInput.value &&
+        Array.from(segmentListEl.querySelectorAll("[data-segment-end]")).some((input) => input.value)
+      ) {
+        form.requestSubmit();
+      }
+    </script>
+  </body>
+</html>
