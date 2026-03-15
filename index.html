@@ -134,7 +134,7 @@
 
       .segment-row {
         display: grid;
-        grid-template-columns: 1fr 1fr auto;
+        grid-template-columns: 1fr 1fr auto auto auto;
         gap: 10px;
         align-items: end;
       }
@@ -153,6 +153,12 @@
       .remove-button {
         width: auto;
         min-width: 48px;
+        padding: 12px 14px;
+      }
+
+      .share-button {
+        width: auto;
+        min-width: 108px;
         padding: 12px 14px;
       }
 
@@ -327,6 +333,12 @@
         <button class="secondary-button remove-button" data-remove-segment type="button">
           Remove
         </button>
+        <button class="secondary-button share-button" data-copy-app-link type="button">
+          Copy app
+        </button>
+        <button class="secondary-button share-button" data-copy-youtube-link type="button">
+          Copy YouTube
+        </button>
       </div>
     </template>
 
@@ -469,12 +481,46 @@
         );
       }
 
+      function buildAppShareUrl(videoId, segment) {
+        const url = new URL(window.location.href);
+        url.search = "";
+        url.searchParams.set("v", videoId);
+        url.searchParams.set("segments", segment.start + "-" + segment.end);
+        return url.toString();
+      }
+
+      function buildNativeYouTubeUrl(videoId, segment) {
+        const url = new URL("https://www.youtube.com/watch");
+        url.searchParams.set("v", videoId);
+        url.searchParams.set("t", String(Math.floor(segment.start)) + "s");
+        return url.toString();
+      }
+
+      async function copyText(value) {
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+          await navigator.clipboard.writeText(value);
+          return;
+        }
+
+        const helper = document.createElement("textarea");
+        helper.value = value;
+        helper.setAttribute("readonly", "");
+        helper.style.position = "absolute";
+        helper.style.left = "-9999px";
+        document.body.appendChild(helper);
+        helper.select();
+        document.execCommand("copy");
+        document.body.removeChild(helper);
+      }
+
       function addSegmentRow(values) {
         const fragment = segmentTemplate.content.cloneNode(true);
         const row = fragment.querySelector(".segment-row");
         const startEl = row.querySelector("[data-segment-start]");
         const endEl = row.querySelector("[data-segment-end]");
         const removeButton = row.querySelector("[data-remove-segment]");
+        const copyAppButton = row.querySelector("[data-copy-app-link]");
+        const copyYouTubeButton = row.querySelector("[data-copy-youtube-link]");
 
         startEl.value = values && values.start ? values.start : "0";
         endEl.value = values && values.end ? values.end : "";
@@ -487,6 +533,65 @@
           }
 
           row.remove();
+        });
+
+        copyAppButton.addEventListener("click", async () => {
+          let videoId;
+          let segment;
+
+          try {
+            videoId = extractVideoId(videoIdInput.value);
+            segment = {
+              start: parseTime(startEl.value),
+              end: parseTime(endEl.value),
+            };
+          } catch (error) {
+            setStatus(error.message, "error");
+            return;
+          }
+
+          if (segment.end <= segment.start) {
+            setStatus("Segment must end after it starts.", "error");
+            return;
+          }
+
+          try {
+            await copyText(buildAppShareUrl(videoId, segment));
+            setStatus("Copied exact segment app link.", "ok");
+          } catch {
+            setStatus("Could not copy the app link.", "error");
+          }
+        });
+
+        copyYouTubeButton.addEventListener("click", async () => {
+          let videoId;
+          let segment;
+
+          try {
+            videoId = extractVideoId(videoIdInput.value);
+            segment = {
+              start: parseTime(startEl.value),
+              end: parseTime(endEl.value),
+            };
+          } catch (error) {
+            setStatus(error.message, "error");
+            return;
+          }
+
+          if (segment.end <= segment.start) {
+            setStatus("Segment must end after it starts.", "error");
+            return;
+          }
+
+          try {
+            await copyText(buildNativeYouTubeUrl(videoId, segment));
+            setStatus(
+              "Copied native YouTube link. It preserves the start time only, not the segment end.",
+              "ok"
+            );
+          } catch {
+            setStatus("Could not copy the YouTube link.", "error");
+          }
         });
 
         segmentListEl.appendChild(row);
